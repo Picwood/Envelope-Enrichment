@@ -1,0 +1,30 @@
+{
+    "configurations": [
+        {
+            "type": "python",
+            "name": "Python configuration",
+            "file": "create_model_inp.py",
+            "arguments": ["create_model_inp.py"],
+        },
+        
+        {
+            "type": "python",
+            "name": "combine inp",
+            "arguments": ["create_model_inp.py"],
+        },
+        {
+            "type": "python",
+            "name": "scrapt",
+            "arguments": ["scrapt.py"],
+        },
+        {
+            "type": "python",
+            "name": "Python configuration (1)",
+            "file": "create_model_inp.py",
+            "arguments": [],
+        },
+        
+        
+    ]
+}
+
