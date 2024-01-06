@@ -26,7 +26,7 @@ class HomtoolsDB(AFXDataDialog):
         okBtn = self.getActionButton(self.ID_CLICKED_OK)
         okBtn.setText('OK')
             
-        fileHandler = HomtoolsDBFileHandler(form, 'workdir', 'Custom files (*-env.inp)')
+        fileHandler = HomtoolsDBFileHandler(form, 'workdir', 'Custom files (*-model.inp)')
         fileTextHf = FXHorizontalFrame(p=self, opts=0, x=0, y=0, w=0, h=0,
             pl=0, pr=0, pt=0, pb=0, hs=DEFAULT_SPACING, vs=DEFAULT_SPACING)
         # Note: Set the selector to indicate that this widget should not be

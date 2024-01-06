@@ -23,6 +23,13 @@
             "file": "create_model_inp.py",
             "arguments": [],
         },
+        {
+            "type": "python",
+            "name": "Plugin (2)",
+            "file": "main_GUI.py",
+            "arguments": [],
+        },
+        
         
         
     ]

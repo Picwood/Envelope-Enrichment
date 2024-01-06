@@ -43,27 +43,29 @@ def main(ep, density, dimension, mat_def):
     
         with open(subfolder_name+'//'+file, 'r') as f:
             lines = f.readlines()
+            print(f)
     
         x = []
         y = []
         z = []
         indl = 5
-        if file.endswith('.inp'):
-            pos = re_pos_inp.search(lines[indl])
-            while pos != None:
-                x.append(float(pos.group(1)))
-                y.append(float(pos.group(2)))
-                z.append(float(pos.group(3)))
-                indl = indl+1
-                pos = re_pos_inp.search(lines[indl])
-        elif file.endswith('.msh'):
-            pos = re_pos_msh.search(lines[indl])
-            while pos != None:
-                x.append(float(pos.group(1)))
-                y.append(float(pos.group(2)))
-                z.append(float(pos.group(3)))
-                indl = indl+1
-                pos = re_pos_msh.search(lines[indl])
+        is_node_section = False
+        is_nodeset_section = False
+        for line in lines:
+            if "*Node" in line or "*NODE" in line:
+                is_node_section = True
+            elif "*" in line:  # Any other section
+                is_node_section = False
+            elif is_node_section:
+                parts = line.strip().split(',')
+                node_id = int(parts[0])
+                coords = tuple(map(float, parts[1:]))
+                mesh.add_node(node_id, coords)
+            elif is_nodeset_section:
+                parts = line.strip().split(',')
+                parts.remove('')
+                nodes_in_set = list(map(int, parts))
+                mesh.add_nodeSet(nodeSet_name, nodes_in_set)
         
         gmsh.initialize()
         gmsh.model.add("t18")
@@ -248,6 +250,7 @@ def main(ep, density, dimension, mat_def):
     
         gmsh.finalize()
         main_combine(os.path.join(subfolder_name, file),filepath_inp)
+        
 
 #ep = float(sys.argv[1])
 #density = float(sys.argv[1])
