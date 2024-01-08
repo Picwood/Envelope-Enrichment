@@ -11,6 +11,24 @@ from tkinter.filedialog import askopenfilenames
 from tkinter.filedialog import askdirectory
 from create_model_inp import main_combine
 
+class MeshData:
+    def __init__(self):
+        self.nodes = {}
+        self.minpos = [float('inf')] * 3  # Initialized to a very large value
+        self.maxpos = [float('-inf')] * 3
+
+    def add_node(self, node_id, coordinates):
+        self.nodes[node_id] = coordinates
+        coord = list(coordinates)
+        for i in range(3):
+            # Update minpos for each coordinate
+            if self.minpos[i] > coord[i]:
+                self.minpos[i] = coord[i]
+            # Update maxpos for each coordinate
+            if self.maxpos[i] < coord[i]:
+                self.maxpos[i] = coord[i]
+                
+
 
 def main(ep, density, dimension, mat_def):
     Tk().withdraw()  # we don't want a full GUI, so keep the root window from appearing
@@ -47,32 +65,33 @@ def main(ep, density, dimension, mat_def):
         x = []
         y = []
         z = []
-        indl = 5
-        if file.endswith('.inp'):
-            pos = re_pos_inp.search(lines[indl])
-            while pos != None:
-                x.append(float(pos.group(1)))
-                y.append(float(pos.group(2)))
-                z.append(float(pos.group(3)))
-                indl = indl+1
-                pos = re_pos_inp.search(lines[indl])
-        elif file.endswith('.msh'):
-            pos = re_pos_msh.search(lines[indl])
-            while pos != None:
-                x.append(float(pos.group(1)))
-                y.append(float(pos.group(2)))
-                z.append(float(pos.group(3)))
-                indl = indl+1
-                pos = re_pos_msh.search(lines[indl])
+        mesh = MeshData()
+        
+        node_section = False
+        for line in lines:
+            if '*Nodes' in line or '*NODES' in line:
+                node_section = True
+            elif '*' in line:
+                node_section = False
+            elif node_section:
+                parts = line.strip().split(',')
+                node_id = int(parts[0])
+                coords = tuple(map(float, parts[1:]))
+                mesh.add_node(node_id, coords)
+                
+    
         
         gmsh.initialize()
         gmsh.model.add("t18")
     
         # Let's use the OpenCASCADE geometry kernel to build two geometries.
+        
+        maxp = mesh.minpos
+        minp = mesh.maxpos
     
-        long = max(x)-min(x)
-        larg = max(y)-min(y)
-        haut = max(z)-min(z)
+        long = maxp[0]-minp[0]
+        larg = maxp[1]-minp[1]
+        haut = maxp[2]-minp[2]
         indens = density
         outdens = density
     

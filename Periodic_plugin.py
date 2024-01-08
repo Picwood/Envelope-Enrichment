@@ -149,7 +149,7 @@ class _rsgTmp001_DBFileHandler(FXObject):
         FXObject.__init__(self)
         FXMAPFUNC(self, SEL_COMMAND, AFXMode.ID_ACTIVATE, _rsgTmp001_DBFileHandler.activate)
         
-        self.cmd = AFXGuiCommand(self, 'setWorkingDir', 'periodicBoundary_env')
+        self.cmd = AFXGuiCommand(self, 'setWorkingDir', 'periodicBoundary_env.py')
         self.workdir = AFXObjectKeyword(self.cmd, 'workdir', TRUE)
     
 
