@@ -613,7 +613,7 @@ def main(workdir, iteration):
     os.chdir(working_folder)
     file = os.path.basename(workdir)
     name, ext = os.path.splitext(file)
-    text_file_name = os.path.join(working_folder,name[0:-4]+'.e2a')
+    text_file_name = os.path.join(working_folder,name[0:-6]+'.e2a')
     
 
     homotot = [[(0.1, 0.0, 0.0), (0.0, 0.0, 0.0), (0.0, 0.0, 0.0)],
@@ -641,7 +641,8 @@ def main(workdir, iteration):
     #    matrix = [list(map(int, row)) for row in reader]
     # print matrix
 
-    modelname = workdir+'model'
+    modelname = name
+    print modelname
     mdb.ModelFromInputFile(name=modelname, inputFileName=modelname)
 
     a = mdb.models[modelname].rootAssembly
