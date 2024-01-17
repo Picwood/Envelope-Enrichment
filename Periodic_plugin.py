@@ -98,7 +98,7 @@ class PeriodicDB(AFXDataDialog):
         okBtn = self.getActionButton(self.ID_CLICKED_OK)
         okBtn.setText('OK')
         GroupBox_1 = FXGroupBox(p=self, text='Envelope Homogenization', opts=FRAME_GROOVE|LAYOUT_FILL_X)
-        fileHandler = _rsgTmp001_DBFileHandler(form, 'folderName', 'All files (*)')
+        fileHandler = _rsgTmp001_DBFileHandler(form, 'fileName', 'All files (*)')
         fileTextHf = FXHorizontalFrame(p=GroupBox_1, opts=0, x=0, y=0, w=0, h=0,
                                        pl=0, pr=0, pt=0, pb=0, hs=DEFAULT_SPACING, vs=DEFAULT_SPACING)
         # Note: Set the selector to indicate that this widget should not be
