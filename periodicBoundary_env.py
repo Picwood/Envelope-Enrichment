@@ -647,7 +647,15 @@ def main(workdir, iteration):
     a = mdb.models[modelname].rootAssembly
     session.viewports['Viewport: 1'].setValues(displayedObject=a)
     #mdb.models['Model-1'].parts.changeKey(fromName='PART-1', toName='RVEplus')
-    p = mdb.models[modelname].parts['RVEPLUS']
+    loaded=False
+    while loaded:
+        try:
+            p = mdb.models[modelname].parts['RVEPLUS']
+        except:
+            time.sleep(1)
+        else:
+            loaded=True
+    
     #mdb.models['Model-1'].rootAssembly.features.changeKey(fromName='PART-1-1',
     #                                                      toName='RVEplus-1')
 
