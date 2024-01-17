@@ -1,7 +1,7 @@
 from abaqusGui import *
 from abaqusConstants import ALL
 import osutils, os
-
+ 
 
 ###########################################################################
 # Class definition

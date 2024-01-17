@@ -11,7 +11,7 @@ from tkinter.filedialog import askopenfilenames
 from tkinter.filedialog import askdirectory
 from create_model_inp import main_combine
 
-class MeshData:
+class NodeData:
     def __init__(self):
         self.nodes = {}
         self.minpos = [float('inf')] * 3  # Initialized to a very large value
@@ -27,9 +27,8 @@ class MeshData:
             # Update maxpos for each coordinate
             if self.maxpos[i] < coord[i]:
                 self.maxpos[i] = coord[i]
-                
-
-
+       
+          
 def main(ep, density, dimension, mat_def):
     Tk().withdraw()  # we don't want a full GUI, so keep the root window from appearing
     files = askopenfilenames(filetypes = [('Input files','*.inp')]) #list or not 
@@ -63,45 +62,30 @@ def main(ep, density, dimension, mat_def):
             lines = f.readlines()
             print(f)
     
-        x = []
-        y = []
-        z = []
-        indl = 5
         is_node_section = False
-        is_nodeset_section = False
+        nodes = NodeData()
         for line in lines:
-            if "*Node" in line or "*NODE" in line:
+            if "*node" in line.lower():
                 is_node_section = True
             elif "*" in line:  # Any other section
                 is_node_section = False
             elif is_node_section:
-        mesh = MeshData()
-        
-        node_section = False
-        for line in lines:
-            if '*Nodes' in line or '*NODES' in line:
-                node_section = True
-            elif '*' in line:
-                node_section = False
-            elif node_section:
                 parts = line.strip().split(',')
                 node_id = int(parts[0])
                 coords = tuple(map(float, parts[1:]))
-                mesh.add_node(node_id, coords)
-            elif is_nodeset_section:
-                parts = line.strip().split(',')
-                parts.remove('')
-                nodes_in_set = list(map(int, parts))
-                mesh.add_nodeSet(nodeSet_name, nodes_in_set)
-                
+                nodes.add_node(node_id, coords)
+               
     
         gmsh.initialize()
         gmsh.model.add("t18")
     
         # Let's use the OpenCASCADE geometry kernel to build two geometries.
         
-        maxp = mesh.minpos
-        minp = mesh.maxpos
+        minp = nodes.minpos
+        maxp = nodes.maxpos
+        print(ep)
+        print(maxp)
+        print(minp)
     
         long = maxp[0]-minp[0]
         larg = maxp[1]-minp[1]
@@ -109,10 +93,6 @@ def main(ep, density, dimension, mat_def):
         indens = density
         outdens = density
     
-        # We can log all messages for further processing with:
-        gmsh.logger.start()
-    
-        # We first create two cubes:
         outbox = gmsh.model.occ.addBox(0, 0, 0,
                                        (long+2*ep), (larg+2*ep), (haut+2*ep), 1)
     
@@ -140,7 +120,7 @@ def main(ep, density, dimension, mat_def):
         gmsh.model.occ.translate([(3, 1)], -ep, -ep, -ep)
     
         ov, ovv = gmsh.model.occ.fragment([(3, 2)], [(3, 1)])
-        gmsh.model.occ.translate(ov, min(x), min(y), min(z))
+        gmsh.model.occ.translate(ov, minp[0], minp[1], minp[2])
         gmsh.model.occ.synchronize()
     
         gmsh.option.setNumber("Geometry.OCCBoundsUseStl", 1)
@@ -194,12 +174,12 @@ def main(ep, density, dimension, mat_def):
             f.writelines(str(larg)+'\n')
             f.writelines(str(haut)+'\n')
             f.writelines(str(ep)+'\n')
-            f.writelines(str(max(x))+'\n')
-            f.writelines(str(min(x))+'\n')
-            f.writelines(str(max(y))+'\n')
-            f.writelines(str(min(y))+'\n')
-            f.writelines(str(max(z))+'\n')
-            f.writelines(str(min(z))+'\n')
+            f.writelines(str(maxp[0])+'\n')
+            f.writelines(str(minp[0])+'\n')
+            f.writelines(str(maxp[1])+'\n')
+            f.writelines(str(minp[1])+'\n')
+            f.writelines(str(maxp[2])+'\n')
+            f.writelines(str(minp[2])+'\n')
     
         top = []
         bottom = []
@@ -209,13 +189,6 @@ def main(ep, density, dimension, mat_def):
         right = []
     
         nodesetname = ['maxy', 'miny', 'minz', 'maxz', 'maxx', 'minx']
-    
-        maxx = max(x)
-        minx = min(x)
-        maxy = max(y)
-        miny = min(y)
-        maxz = max(z)
-        minz = min(z)
     
         with open(filepath_inp, "r") as f:
             lines = f.readlines()
@@ -229,17 +202,17 @@ def main(ep, density, dimension, mat_def):
                 y.append(float(pos.group(2)))
                 z.append(float(pos.group(3)))
     
-                if math.isclose(x[-1], minx-ep, rel_tol=1e-8):
+                if math.isclose(x[-1], minp[0]-ep, rel_tol=1e-8):
                     right.append(indl-2)
-                elif math.isclose(x[-1], maxx+ep, rel_tol=1e-8):
+                elif math.isclose(x[-1], maxp[0]+ep, rel_tol=1e-8):
                     left.append(indl-2)
-                if math.isclose(y[-1], miny-ep, rel_tol=1e-8):
+                if math.isclose(y[-1], minp[1]-ep, rel_tol=1e-8):
                     bottom.append(indl-2)
-                elif math.isclose(y[-1], maxy+ep, rel_tol=1e-8):
+                elif math.isclose(y[-1], maxp[1]+ep, rel_tol=1e-8):
                     top.append(indl-2)
-                if math.isclose(z[-1], minz-ep, rel_tol=1e-8):
+                if math.isclose(z[-1], minp[2]-ep, rel_tol=1e-8):
                     front.append(indl-2)
-                elif math.isclose(z[-1], maxz+ep, rel_tol=1e-8):
+                elif math.isclose(z[-1], maxp[2]+ep, rel_tol=1e-8):
                     back.append(indl-2)
                 indl = indl+1
                 pos = re_pos_inp.search(lines[indl])
@@ -276,8 +249,6 @@ def main(ep, density, dimension, mat_def):
                 elif 'Orthotropic' in key:
                     f.writelines('*Elastic, type=ORTHOTROPIC\n')
                 f.writelines(', '.join(mat_def[key]))
-            
-            
     
         gmsh.finalize()
         main_combine(os.path.join(subfolder_name, file),filepath_inp)

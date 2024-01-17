@@ -641,8 +641,8 @@ def main(workdir, iteration):
     #    matrix = [list(map(int, row)) for row in reader]
     # print matrix
 
-    modelname = 'EnvelopeEnrich'
-    mdb.ModelFromInputFile(name=modelname, inputFileName=workdir)
+    modelname = workdir+'model'
+    mdb.ModelFromInputFile(name=modelname, inputFileName=modelname)
 
     a = mdb.models[modelname].rootAssembly
     session.viewports['Viewport: 1'].setValues(displayedObject=a)
@@ -663,32 +663,13 @@ def main(workdir, iteration):
     # creation of the materials
     ###########################################
 
-    mdb.models[modelname].Material(name='epoxy')
-    mdb.models[modelname].materials['epoxy'].Elastic(type=ORTHOTROPIC, table=((
-                                                                                  4.815e-10, 2.593e-10, 4.815e-10,
-                                                                                  2.594e-10, 2.593e-10, 4.815e-10,
-                                                                                  2.222e-10, 2.222e-10, 2.222e-10),))
-
-    mdb.models[modelname].Material(name='enrich')
-    mdb.models[modelname].materials['enrich'].Elastic(type=ANISOTROPIC, table=((
-                                                                                   4.815, 2.593, 4.815, 2.593, 2.593,
-                                                                                   4.815, 0, 0, 0, 2.222, 0, 0, 0, 0,
-                                                                                   2.222, 0, 0, 0, 0, 0, 2.222),))
-    # mdb.models[modelname].materials['enrich'].Elastic(type=ORTHOTROPIC, table=((
-    #     216.594, 0.93, 9.825, 0.93, 0.38, 9.825, 9.444, 15.778, 15.778), ))
-    mdb.models[modelname].Material(name='carbone')
-    mdb.models[modelname].materials['carbone'].Elastic(type=ORTHOTROPIC, table=((
-                                                                                    216.594, 0.93, 9.825, 0.93, 0.38,
-                                                                                    9.825, 9.444, 15.778, 15.778),))
-
-    mdb.models[modelname].Material(name='Material-1')
-    mdb.models[modelname].materials['Material-1'].Elastic(table=((0.00000001, 0.3),))
+    mdb.models[modelname].Material(name='ENRICH',objectToCopy=mdb.models[modelname].materials['MATRIX'])
 
     mdb.models[modelname].HomogeneousSolidSection(name='Matrix',
                                                   material='MATRIX', thickness=None)
-    mdb.models[modelname].HomogeneousSolidSection(name='enrich',
-                                                  material='MATRIX', thickness=None)
-    mdb.models[modelname].HomogeneousSolidSection(name='void',
+    mdb.models[modelname].HomogeneousSolidSection(name='Enrich',
+                                                  material='ENRICH', thickness=None)
+    mdb.models[modelname].HomogeneousSolidSection(name='Void',
                                                   material='Material-1', thickness=None)
     mdb.models[modelname].HomogeneousSolidSection(name='Embedded',
                                                   material='EMBEDDED', thickness=None)
@@ -710,10 +691,10 @@ def main(workdir, iteration):
                                                             angle=0.0,
                                                             additionalRotationField='', stackDirection=STACK_1)
 
-    p.SectionAssignment(region=envlop, sectionName='Matrix', offset=0.0,
+    p.SectionAssignment(region=envlop, sectionName='Enrich', offset=0.0,
                         offsetType=MIDDLE_SURFACE, offsetField='',
                         thicknessAssignment=FROM_SECTION)
-    p.SectionAssignment(region=rve, sectionName='Embedded', offset=0.0,
+    p.SectionAssignment(region=rve, sectionName='Matrix', offset=0.0,
                         offsetType=MIDDLE_SURFACE, offsetField='',
                         thicknessAssignment=FROM_SECTION)
 
@@ -815,27 +796,16 @@ def main(workdir, iteration):
                                          weightFactorTolerance=1e-06, absoluteTolerance=0.0,
                                          fractionalTolerance=0.1, toleranceMethod=FRACTIONAL)
 
-    compMat = [[216.594, 0.93, 0.93, 0, 0, 0],
-               [0.93, 9.825, 0.38, 0, 0, 0],
-               [0.93, 0.38, 9.825, 0, 0, 0],
-               [0, 0, 0, 9.444, 0, 0],
-               [0, 0, 0, 0, 15.778, 0],
-               [0, 0, 0, 0, 0, 15.778]]
-    matMat = [[4.815, 2.594, 2.594, 0, 0, 0],
-              [2.593, 4.815, 2.594, 0, 0, 0],
-              [2.594, 2.594, 4.815, 0, 0, 0],
-              [0, 0, 0, 2.222, 0, 0],
-              [0, 0, 0, 0, 2.222, 0],
-              [0, 0, 0, 0, 0, 2.222]]
 
-    sd = compMat
-    for k in range(3):
-        for l in range(6):
-            sd[k][l] = sd[k][l] - matMat[k][l]
-    sd = matMat
+
+
     ite_job = 1
     idx = [0, 4, 8, 1, 2, 5]
     for i in range(iteration):
+        C = []
+        CC = [[0, 0, 0, 0, 0, 0], [0, 0, 0, 0, 0, 0], [0, 0, 0, 0, 0, 0],
+              [0, 0, 0, 0, 0, 0], [0, 0, 0, 0, 0, 0], [0, 0, 0, 0, 0, 0]]
+        
         if i > 0:
             name = 'PBC-%s-%d.dat' % (name[0:-4], i)
             f = open(name, 'r')
@@ -846,38 +816,32 @@ def main(workdir, iteration):
                 floatdata.append(float(uniqueName))
             sd = np.reshape(floatdata, (6, 6))
             f.close()
-
-        C = []
-        CC = [[0, 0, 0, 0, 0, 0], [0, 0, 0, 0, 0, 0], [0, 0, 0, 0, 0, 0],
-              [0, 0, 0, 0, 0, 0], [0, 0, 0, 0, 0, 0], [0, 0, 0, 0, 0, 0]]
-
-        s11 = sd[0][0]
-        s12 = sd[0][1]
-        s22 = sd[1][1]
-        s13 = sd[0][2]
-        s23 = sd[1][2]
-        s33 = sd[2][2]
-        s14 = sd[0][3]
-        s24 = sd[1][3]
-        s34 = sd[2][3]
-        s44 = sd[3][3]
-        s15 = sd[0][4]
-        s25 = sd[1][4]
-        s35 = sd[2][4]
-        s45 = sd[3][4]
-        s55 = sd[4][4]
-        s16 = sd[0][5]
-        s26 = sd[1][5]
-        s36 = sd[2][5]
-        s46 = sd[3][5]
-        s56 = sd[4][5]
-        s66 = sd[5][5]
-
-        mdb.models[modelname].materials['enrich'].Elastic(type=ANISOTROPIC, table=((
-                                                                                       s11, s12, s22, s13, s23, s33,
-                                                                                       s14, s24, s34, s44, s15, s25,
-                                                                                       s35, s45, s55, s16, s26, s36,
-                                                                                       s46, s56, s66),))
+            s11 = sd[0][0]
+            s12 = sd[0][1]
+            s22 = sd[1][1]
+            s13 = sd[0][2]
+            s23 = sd[1][2]
+            s33 = sd[2][2]
+            s14 = sd[0][3]
+            s24 = sd[1][3]
+            s34 = sd[2][3]
+            s44 = sd[3][3]
+            s15 = sd[0][4]
+            s25 = sd[1][4]
+            s35 = sd[2][4]
+            s45 = sd[3][4]
+            s55 = sd[4][4]
+            s16 = sd[0][5]
+            s26 = sd[1][5]
+            s36 = sd[2][5]
+            s46 = sd[3][5]
+            s56 = sd[4][5]
+            s66 = sd[5][5]
+            mdb.models[modelname].materials['enrich'].Elastic(type=ANISOTROPIC, table=((
+                                                                                           s11, s12, s22, s13, s23, s33,
+                                                                                           s14, s24, s34, s44, s15, s25,
+                                                                                           s35, s45, s55, s16, s26, s36,
+                                                                                           s46, s56, s66),))
 
         a = mdb.models[modelname].rootAssembly
 

@@ -106,6 +106,17 @@ def update_fields(frame_fields):
 
 app = tk.Tk()
 app.title("Homtools GUI")
+app.configure(bg='black')
+
+    # Styles for ttk widgets
+style = ttk.Style()
+style.theme_use('clam')  # 'clam' theme provides a good base for dark themes
+style.configure('TFrame', background='#333333', foreground='white', borderwidth=0)
+style.configure('TButton', background='#333333', foreground='white', borderwidth=0)
+style.configure('TEntry', background='#333333', foreground='#000000', borderwidth=0)
+style.configure('TLabel', background='#333333', foreground='white')
+style.configure('TCombobox', background='#333333', foreground='#000000', borderwidth=0)
+        
 
 # Script 1 GUI
 label_intro = ttk.Label(app, text=r"Build an envelopped RVE suitable for homogeneization in Abaqus coupled with the Homtools plugin")
@@ -130,12 +141,12 @@ combo_dimension.grid(column=1, row=3)
 combo_dimension.set("3D")
 
 btn_cancel = ttk.Button(app, text="Exit", command=app.destroy)
-btn_cancel.grid(column=0, row=4)
+btn_cancel.grid(column=0, row=5)
 btn_script1 = ttk.Button(app, text="Browse", command=call_script_1)
-btn_script1.grid(column=1, row=4)
+btn_script1.grid(column=1, row=5)
 
 frame_main = ttk.Frame(app, padding="10")
-frame_main.grid(row=5, column=0, sticky=(tk.W, tk.E, tk.N, tk.S))
+frame_main.grid(row=4, column=0, sticky=(tk.W, tk.E, tk.N, tk.S))
 frame_main.columnconfigure(0, weight=1)  # Allow column 0 to expand
 frame_main.columnconfigure(1, weight=1)  # Allow column 1 to expand more
 
