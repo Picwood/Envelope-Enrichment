@@ -50,6 +50,8 @@ import re
 import csv
 from Tkinter import *
 import Tkinter, Tkconstants, tkFileDialog
+import time
+import threading
 
 def getCurrentModel():
     vpName = session.currentViewportName
@@ -606,6 +608,17 @@ class MainFrame():
         self.workdir = workdir
         self.ite = ite
         pass
+    
+def import_model(workdir):
+    working_folder = os.path.abspath(os.path.join(workdir,os.pardir))
+    os.chdir(working_folder)
+    file = os.path.basename(workdir)
+    name, ext = os.path.splitext(file)
+    text_file_name = os.path.join(working_folder,name[0:-6]+'.e2a')
+    
+    mdb.ModelFromInputFile(name=name, inputFileName=name)
+    print 'on avance'
+
 
 def main(workdir, iteration):
     
@@ -643,11 +656,15 @@ def main(workdir, iteration):
 
     modelname = name
     print modelname
-    mdb.ModelFromInputFile(name=modelname, inputFileName=modelname)
-
+    
+    
     a = mdb.models[modelname].rootAssembly
     session.viewports['Viewport: 1'].setValues(displayedObject=a)
     #mdb.models['Model-1'].parts.changeKey(fromName='PART-1', toName='RVEplus')
+    
+            
+    
+    
     p = mdb.models[modelname].parts['RVEPLUS']
     #mdb.models['Model-1'].rootAssembly.features.changeKey(fromName='PART-1-1',
     #                                                      toName='RVEplus-1')
