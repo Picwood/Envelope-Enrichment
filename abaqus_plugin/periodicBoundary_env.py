@@ -898,7 +898,7 @@ def main(filePath, modelname, iteration):
             first_set = odb.rootAssembly.instances['ASSEMBLY']
             allFields = lastFrame.fieldOutputs
 
-            elsetname = 'RVEPLUS-1.VOLUME3'
+            elsetname = 'SET-1'
 
             phase = odb.rootAssembly.elementSets[elsetname]  # faire l'iteration pour les deux sets de RVE et envelope
             jacobien = lastFrame.fieldOutputs['IVOL']
@@ -906,16 +906,6 @@ def main(filePath, modelname, iteration):
             det = jac.values
 
             b = 0
-            for t in det:
-                b = b + t.data
-
-            elsetname = 'RVEPLUS-1.VOLUME2'
-
-            phase = odb.rootAssembly.elementSets[elsetname]  # faire l'iteration pour les deux sets de RVE et envelope
-            jacobien = lastFrame.fieldOutputs['IVOL']
-            jac = jacobien.getSubset(position=INTEGRATION_POINT, region=phase)
-            det = jac.values
-
             for t in det:
                 b = b + t.data
 
