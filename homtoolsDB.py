@@ -19,7 +19,7 @@ class HomtoolsDB(AFXDataDialog):
         # Construct the base class.
         #
 
-        AFXDataDialog.__init__(self, form, 'Homtools-Envelope Enrichment',
+        AFXDataDialog.__init__(self, form, 'EE - Import model',
             self.OK|self.CANCEL, DIALOG_ACTIONS_SEPARATOR)
             
 
@@ -38,9 +38,7 @@ class HomtoolsDB(AFXDataDialog):
         icon = afxGetIcon('fileOpen', AFX_ICON_SMALL )
         FXButton(p=fileTextHf, text='	Select File\nFrom Dialog', ic=icon, tgt=fileHandler, sel=AFXMode.ID_ACTIVATE,
             opts=BUTTON_NORMAL|LAYOUT_CENTER_Y, x=0, y=0, w=0, h=0, pl=1, pr=1, pt=1, pb=1)
-        spinner = AFXSpinner(self, 2, 'Iteration', form.iterationKw, 0)
-        spinner.setRange(1, 10)
-        spinner.setIncrement(1)
+        
 
 
 ###########################################################################
@@ -69,3 +67,21 @@ class HomtoolsDBFileHandler(FXObject):
        fileDb.setReadOnlyPatterns('*.odb')
        fileDb.create()
        fileDb.showModal()
+        
+    def deactivate(self):
+        pass
+        
+class HomtoolsDBIte(AFXDataDialog):
+    def __init__(self, form):
+        
+        AFXDataDialog.__init__(self, form, 'EE - Launch computing',
+                               self.OK|self.CANCEL, DIALOG_ACTIONS_SEPARATOR)
+
+
+        okBtn = self.getActionButton(self.ID_CLICKED_OK)
+        okBtn.setText('OK')
+        
+        spinner = AFXSpinner(self, 2, 'Iteration', form.iterationKw, 0)
+        spinner.setRange(1, 10)
+        spinner.setIncrement(1)
+        

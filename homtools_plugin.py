@@ -1,7 +1,7 @@
 from abaqusGui import *
 from abaqusConstants import ALL
 import osutils, os
- 
+import homtoolsDB
 
 ###########################################################################
 # Class definition
@@ -14,35 +14,45 @@ class Homtools_plugin(AFXForm):
         
         # Construct the base class.
         #
+        self.next_step = 0
         AFXForm.__init__(self, owner)
         self.radioButtonGroups = {}
 
-        self.cmd = AFXGuiCommand(mode=self, method='main',
+        self.cmd = AFXGuiCommand(mode=self, method='import_model',
             objectName='periodicBoundary_env', registerQuery=False)
         pickedDefault = ''
         self.workdirKw = AFXStringKeyword(self.cmd, 'workdir', True, '')
-        self.iterationKw = AFXIntKeyword(self.cmd, 'iteration', True, 5)
 
     #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    def get_next_dialog(self):
+        if self.next_step == 0:
+            return self.getFirstDialog()
+        else:
+            return self.getSecondDialog()
+    #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    
     def getFirstDialog(self):
 
-        import homtoolsDB
         return homtoolsDB.HomtoolsDB(self)
 
     #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    def getSecondDialog(self):
+
+        return homtoolsDB.HomtoolsDBIte(self)
+
+    #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     def doCustomChecks(self):
-
-        # Try to set the appropriate radio button on. If the user did
-        # not specify any buttons to be on, do nothing.
-        #
-        for kw1,kw2,d in self.radioButtonGroups.values():
-            try:
-                value = d[ kw1.getValue() ]
-                kw2.setValue(value)
-            except:
-                pass
+        self.next_step = self.next_step + 1
+        #fileinputed = self.workdirKw()
+        #if fileinputed != '':
+        #    self.next_step = 1
+        if self.next_step == 2:
+            self.cmd = AFXGuiCommand(mode=self, method='main',
+                                     objectName='periodicBoundary_env', registerQuery=False)
+            self.workdirKw = AFXStringKeyword(self.cmd, 'workdir', True, '')
+            self.iterationKw = AFXIntKeyword(self.cmd, 'iteration', True, 5)
         return True
-
+        
     #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     def okToCancel(self):
 
@@ -50,6 +60,8 @@ class Homtools_plugin(AFXForm):
         # as New or Open) or model change is executed.
         #
         return False
+    #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
 
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # Register the plug-in
