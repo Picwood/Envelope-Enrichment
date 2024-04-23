@@ -46,25 +46,34 @@ def create_2d_rve_with_fibers(ep, density, num_fibers, fiber_length, ref_angle, 
     width = 100  # Example width of 100 units
     height = 100  # Example height of 100 units
 
+
     outer_box = gmsh.model.occ.addRectangle(-ep, -ep, 0, width + 2*ep, height + 2*ep)
     inner_box = gmsh.model.occ.addRectangle(0, 0, 0, width, height)
     gmsh.model.occ.synchronize()
+    print(gmsh.model.getEntities(2))
+    outer_surf = gmsh.model.occ.addPlaneSurface([outer_box])
+    inner_surf = gmsh.model.occ.addPlaneSurface([inner_box])
 
-    ov, ovv = gmsh.model.occ.fragment([(2, outer_box)], [(2, inner_box)])
+
 
     gmsh.option.setNumber("Geometry.OCCBoundsUseStl", 1)
-    
-    gmsh.model.addPhysicalGroup(2, [0], 1)
-    gmsh.model.addPhysicalGroup(2, [1], 2)
+
+    transfinite = True
+    transfiniteAuto = True
+    gmsh.model.mesh.setTransfiniteAutomatic()
+    #if transfinite:
+    ov, ovv = gmsh.model.occ.fragment([(2, outer_surf)], [(2, inner_surf)])
+
+    gmsh.model.occ.synchronize()
 
     fibers = []
-
     fig, ax = plt.subplots()  # Set up the plot
     ax.set_aspect('equal', adjustable='box')
     ax.set_title('Fiber Distribution in 2D RVE')
     ax.set_xlabel('X Position')
     ax.set_ylabel('Y Position')
-    
+    gmsh.model.occ.synchronize()
+    print(gmsh.model.getEntities(2))
     for _ in range(num_fibers):
         # Determine fiber orientation based on reference angle and spread
         if dist_type == 'uniform':
@@ -75,7 +84,7 @@ def create_2d_rve_with_fibers(ep, density, num_fibers, fiber_length, ref_angle, 
             angle = ref_angle + np.random.normal(0, angle_spread)
             center_x = width / 2 + np.random.normal(0, pos_spread)
             center_y = height / 2 + np.random.normal(0, pos_spread)
-        
+
         # Calculate end points of the fiber line
         x1 = center_x + (fiber_length/2) * np.cos(angle)
         y1 = center_y + (fiber_length/2) * np.sin(angle)
@@ -86,38 +95,36 @@ def create_2d_rve_with_fibers(ep, density, num_fibers, fiber_length, ref_angle, 
         p1 = gmsh.model.occ.addPoint(x1_adj, y1_adj, 0)
         p2 = gmsh.model.occ.addPoint(x2_adj, y2_adj, 0)
         fiber_line = gmsh.model.occ.addLine(p1,p2)
-        gmsh.model.mesh.setSize([(1,fiber_line)], 0.05)
+        #gmsh.model.mesh.setSize([(1,fiber_line)], 0.05)
+        #gmsh.model.mesh.embed(1, [fiber_line], 2, 2)
+        try:
+            ov, ovv = gmsh.model.occ.fragment([(2,inner_surf)], [(1, fiber_line)])
+        except:
+            print("pas possible")
         gmsh.model.occ.synchronize()
-        gmsh.model.mesh.embed(1, [fiber_line], 2, inner_box)
         fibers.append({"id": fiber_line, "position": [center_x, center_y], "angle": angle, "length": fiber_length})
         ax.plot([x1_adj, x2_adj], [y1_adj, y2_adj], marker='o')
 
     gmsh.model.occ.synchronize()
-    if '-nopopup' not in sys.argv:
-        gmsh.fltk.run()
 
-    translation = [1, 0, 0, height+2*ep,    0, 1, 0, 0,     0, 0, 1, 0,    0, 0, 0, height+2*ep]
-    gmsh.model.mesh.setPeriodic(1, [2], [1], translation)
-    gmsh.model.mesh.setPeriodic(1, [4], [3],
-                                [1, 0, 0, 0,   0, 1, 0, width+2*ep,   0, 0, 1, 0,   0, 0, 0, width+2*ep])
-        
-    transfinite = True
-    transfiniteAuto = True
-    
-    if transfinite:
-        NN = int(10/density)
-        inte = 0
-        for c in gmsh.model.getEntities(1):
-            if inte >= 12:
-                gmsh.model.mesh.setTransfiniteCurve(c[1], NN)
-            inte = inte+1
+    NN = int(10/density)
+    ite = 0
+    for c in range(8):
+        if c > 3:
+            NN=int(20/density)
+        #points = gmsh.model.getBoundary([c])
+        gmsh.model.mesh.setTransfiniteCurve(c+1, NN)
+    #for s in gmsh.model.getEntities(2):
+    #    gmsh.model.mesh.setTransfiniteSurface(s[1])
 
-    gmsh.model.occ.synchronize()
+
     gmsh.option.setNumber('Mesh.SaveGroupsOfElements', -111)
 
     plt.show()
     plt.savefig('fiber_distribution.png')
-        
+
+    gmsh.option.setNumber("Mesh.Smoothing", 100)
+
     gmsh.model.mesh.generate(2)
 
     # Save fibers data to a JSON file for MATLAB analysis
@@ -125,13 +132,16 @@ def create_2d_rve_with_fibers(ep, density, num_fibers, fiber_length, ref_angle, 
         json.dump(fibers, f, indent=4)
 
     filepath_unv = os.path.join('C://Temp//%s-VER.unv')
-    
+
     gmsh.write(filepath_unv)
+
+    if '-nopopup' not in sys.argv:
+        gmsh.fltk.run()
 
     gmsh.finalize()
 plt.ion()
-envelope_thickness = 5
-mesh_density = 1
+envelope_thickness = 20
+mesh_density = 0.5
 num_fibers = 100
 fiber_length = 50
 reference_angle = np.pi /4  # Example: 45 degrees as the reference angle
@@ -139,3 +149,4 @@ angle_spread = np.pi/6  # Example: ±10 degrees spread
 position_spread = 50  # Example: Spread of 10 units from the center
 distribution_type = 'uniform'  # Options: 'uniform' or 'normal'
 create_2d_rve_with_fibers(envelope_thickness, mesh_density, num_fibers, fiber_length, reference_angle, angle_spread, position_spread, distribution_type)
+
