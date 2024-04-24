@@ -122,13 +122,15 @@ def create_2d_rve_with_fibers(ep, density, num_fibers, fiber_length, ref_angle, 
     lines = gmsh.model.getEntities(1)
     for i in range(len(lines)-8):
         actual_surf = gmsh.model.getEntities(2)
-        try:
-            for ns in range(actual_surf):
-                if ns != (2,3):
-                    ov2, ovv = gmsh.model.occ.fragment([ns],[lines[i+8]])
+        for ns in range(len(actual_surf)):
+            if ns != (2,3):
+                print(actual_surf[ns])
+                print([lines[i+8]])
+                try:
+                    ov2, ovv = gmsh.model.occ.fragment([actual_surf[ns]],[lines[i+8]])
                     gmsh.model.occ.synchronize()
-        except:
-            print("pas possible")
+                except:
+                    print("pas possible")
 
     gmsh.model.occ.synchronize()
 
