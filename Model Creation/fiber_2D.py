@@ -50,11 +50,6 @@ def create_2d_rve_with_fibers(ep, density, num_fibers, fiber_length, ref_angle, 
     outer_box = gmsh.model.occ.addRectangle(-ep, -ep, 0, width + 2*ep, height + 2*ep)
     inner_box = gmsh.model.occ.addRectangle(0, 0, 0, width, height)
     gmsh.model.occ.synchronize()
-    print(gmsh.model.getEntities(2))
-    #outer_surf = gmsh.model.occ.addPlaneSurface([outer_box])
-    #inner_surf = gmsh.model.occ.addPlaneSurface([inner_box])
-
-
 
     gmsh.option.setNumber("Geometry.OCCBoundsUseStl", 1)
 
@@ -74,7 +69,7 @@ def create_2d_rve_with_fibers(ep, density, num_fibers, fiber_length, ref_angle, 
     ax.set_ylabel('Y Position')
     gmsh.model.occ.synchronize()
     print(gmsh.model.getEntities(2))
-    for _ in range(num_fibers):
+    for fiber_line in range(num_fibers):
         # Determine fiber orientation based on reference angle and spread
         if dist_type == 'uniform':
             angle = ref_angle + np.random.uniform(-angle_spread, angle_spread)
@@ -92,51 +87,48 @@ def create_2d_rve_with_fibers(ep, density, num_fibers, fiber_length, ref_angle, 
         y2 = center_y - (fiber_length/2) * np.sin(angle)
 
         x1_adj, y1_adj, x2_adj, y2_adj = truncate_fiber(x1, y1, x2, y2, width, height)
-        p1 = gmsh.model.occ.addPoint(x1_adj, y1_adj, 0)
-        p2 = gmsh.model.occ.addPoint(x2_adj, y2_adj, 0)
-        fiber_line = gmsh.model.occ.addLine(p1,p2)
-        #gmsh.model.mesh.setSize([(1,fiber_line)], 0.05)
+        #p1 = gmsh.model.occ.addPoint(x1_adj, y1_adj, 0)
+        #p2 = gmsh.model.occ.addPoint(x2_adj, y2_adj, 0)
+
+            # Calculate the distance between the two endpoints
+        length = np.sqrt((x2_adj - x1_adj)**2 + (y2_adj - y1_adj)**2)
+        # Calculate the number of points based on the desired density (distance between points)
+        num_points = int(np.floor(length / point_density))
+
+        # Ensure at least two points (the endpoints)
+        num_points = max(num_points, 1)
+
+        # Compute the coordinates of the points
+        for i in range(num_points + 1):
+            # Linear interpolation
+            t = i / num_points
+            x = (1 - t) * x1_adj + t * x2_adj
+            y = (1 - t) * y1_adj + t * y2_adj
+            gmsh.model.occ.addPoint(x, y, 0, meshSize=point_density)
+
+
         #gmsh.model.mesh.embed(1, [fiber_line], 2, 2)
         gmsh.model.occ.synchronize()
         fibers.append({"id": fiber_line, "position": [center_x, center_y], "angle": angle, "length": fiber_length})
         ax.plot([x1_adj, x2_adj], [y1_adj, y2_adj], marker='o')
 
-        if len(fibers) > 1:
-            lines = gmsh.model.getEntities(1)
-            sousseg = 1
-            tool = [(1,fiber_line)]
-            for i in range(len(lines)-9):
-                try:
-                    for j in range(sousseg):
-                        ov2, ovv = gmsh.model.occ.fuse([lines[i+8]], [tool[-1-j]])
-                        gmsh.model.occ.synchronize()
-
-                except:
-                    print("pas possible")
-                else:
-                    if len(ov2)>2:
-                        sousseg = sousseg+1
-                        tool = [ov2[-1],ov2[-2]]
-                        print(tool)
-
-    lines = gmsh.model.getEntities(1)
-    for i in range(len(lines)-8):
-        actual_surf = gmsh.model.getEntities(2)
-        for ns in range(len(actual_surf)):
-            if ns != (2,3):
-                print(actual_surf[ns])
-                print([lines[i+8]])
-                try:
-                    ov2, ovv = gmsh.model.occ.fragment([actual_surf[ns]],[lines[i+8]])
-                    gmsh.model.occ.synchronize()
-                except:
-                    print("pas possible")
+    points = gmsh.model.getEntities(0)
+    for i in range(len(points)-8):
+        try:
+            #ov2, ovv = gmsh.model.occ.fragment([actual_surf[ns]],[lines[i+8]])
+            gmsh.model.mesh.embed(0, [points[i+8][1]], 2, 2)
+        except:
+            print("pas possible")
 
     gmsh.model.occ.synchronize()
 
-    #NN = int(10/density)
-    #ite = 0
-    #for c in range(8):
+    NN = 10
+    ite = 0
+    for c in gmsh.model.getEntities(1):
+        if ite > 3:
+            NN=20
+        gmsh.model.mesh.setTransfiniteCurve(c[1], NN)
+        ite = ite+1
         #if c > 3:
         #    NN=int(20/density)
         #points = gmsh.model.getBoundary([c])
@@ -147,7 +139,6 @@ def create_2d_rve_with_fibers(ep, density, num_fibers, fiber_length, ref_angle, 
 
     gmsh.option.setNumber('Mesh.SaveGroupsOfElements', -111)
 
-    plt.show()
     plt.savefig('fiber_distribution.png')
 
     gmsh.option.setNumber("Mesh.Smoothing", 100)
@@ -166,10 +157,11 @@ def create_2d_rve_with_fibers(ep, density, num_fibers, fiber_length, ref_angle, 
         gmsh.fltk.run()
 
     gmsh.finalize()
-plt.ion()
+
+point_density = 5
 envelope_thickness = 20
 mesh_density = 0.5
-num_fibers = 20
+num_fibers = 100
 fiber_length = 50
 reference_angle = np.pi /4  # Example: 45 degrees as the reference angle
 angle_spread = np.pi/6  # Example: ±10 degrees spread
