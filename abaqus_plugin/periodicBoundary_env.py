@@ -611,8 +611,16 @@ class MainFrame():
         pass
     
 
-def main(filePath, modelname, iteration):
-    
+def main(filePath, modelname, iteration, dimension, meshType):
+    """
+    Main function for periodic boundary conditions
+    Args:
+        filePath: Path to the input file
+        modelname: Name of the model
+        iteration: Number of iterations
+        dimension: 2 for 2D analysis, 3 for 3D analysis
+        meshType: 4 for embedded mesh, 5 for conforming mesh
+    """
     if filePath != '':
         working_folder = os.path.abspath(os.path.join(filePath,os.pardir))
         os.chdir(working_folder)
@@ -621,13 +629,22 @@ def main(filePath, modelname, iteration):
         text_file_name = os.path.join(working_folder,name[0:-6]+'.e2a')
     
 
-    homotot = [[(0.1, 0.0, 0.0), (0.0, 0.0, 0.0), (0.0, 0.0, 0.0)],
-               [(0.0, 0.0, 0.0), (0.0, 0.1, 0.0), (0.0, 0.0, 0.0)],
-               [(0.0, 0.0, 0.0), (0.0, 0.0, 0.0), (0.0, 0.0, 0.1)],
-               [(0.0, 0.05, 0.0), (0.05, 0.0, 0.0), (0.0, 0.0, 0.0)],
-               [(0.0, 0.0, 0.05), (0.0, 0.0, 0.0), (0.05, 0.0, 0.0)],
-               [(0.0, 0.0, 0.0), (0.0, 0.0, 0.05), (0.0, 0.05, 0.0)]]
-
+    # Define deformation matrices based on dimension
+    if dimension == 2:
+        homotot = [
+            [(0.1, 0.0, 0.0), (0.0, 0.0, 0.0)],           # xx
+            [(0.0, 0.0, 0.0), (0.0, 0.1, 0.0)],           # yy
+            [(0.0, 0.05, 0.0), (0.05, 0.0, 0.0)]          # xy
+        ]
+    else:  # 3D case
+        homotot = [
+            [(0.1, 0.0, 0.0), (0.0, 0.0, 0.0), (0.0, 0.0, 0.0)],    # xx
+            [(0.0, 0.0, 0.0), (0.0, 0.1, 0.0), (0.0, 0.0, 0.0)],    # yy
+            [(0.0, 0.0, 0.0), (0.0, 0.0, 0.0), (0.0, 0.0, 0.1)],    # zz
+            [(0.0, 0.05, 0.0), (0.05, 0.0, 0.0), (0.0, 0.0, 0.0)],  # xy
+            [(0.0, 0.0, 0.05), (0.0, 0.0, 0.0), (0.05, 0.0, 0.0)],  # xz
+            [(0.0, 0.0, 0.0), (0.0, 0.0, 0.05), (0.0, 0.05, 0.0)]   # yz
+        ]
 
     with open(text_file_name, 'r') as f:
         lines = f.readlines()
@@ -661,27 +678,49 @@ def main(filePath, modelname, iteration):
     #mdb.models['Model-1'].rootAssembly.features.changeKey(fromName='PART-1-1',
     #                                                      toName='RVEplus-1')
 
-    asetvolume2 = a.allSets['RVEPLUS-1.VOLUME2'].elements
-    asetvolume3 = a.allSets['RVEPLUS-1.VOLUME3'].elements
-
-    rve = p.Set(elements=p.elements[0:len(asetvolume2)], name='RVE')
-    envlop = p.Set(elements=p.elements[len(asetvolume2):len(asetvolume2) + len(asetvolume3)], name='ENVELOPE')
-
-    # mdb.Model(name=modelname, modelType=STANDARD_EXPLICIT)
+    # todo complete other cases so it works in par with create_model_inp.py and unv_to_inp_model.py
+    if meshType == 4 and dimension == 3:
+        asetvolume2 = a.allSets['RVEPLUS-1.MATRIX'].elements
+        asetvolume3 = a.allSets['RVEPLUS-1.ENVELOPE'].elements
+        rve = p.Set(elements=p.elements[0:len(asetvolume2)], name='RVE')
+        envlop = p.Set(elements=p.elements[len(asetvolume2):len(asetvolume2) + len(asetvolume3)], name='ENVELOPE')
+    elif meshType == 5 and dimension == 2:
+        rve = p.allSets['MATRIX']
+        envlop = p.allSets['ENVELOPE']
 
     ###########################################
     # creation of the materials
     ###########################################
-
+    # todo if material is not found, create it with random values
+    if 'MATRIX' in mdb.models[modelname].materials:
+        mdb.models[modelname].HomogeneousSolidSection(name='Matrix',
+                                                  material='MATRIX', thickness=None)
+    else:
+        mdb.models[modelname].Material(name='MATRIX')
+        mdb.models[modelname].materials['MATRIX'].Elastic(type=ISOTROPIC, table=((1, 0.2), ))
+        mdb.models[modelname].HomogeneousSolidSection(name='Matrix',
+                                                  material='MATRIX', thickness=None)
+    
     mdb.models[modelname].Material(name='ENRICH',objectToCopy=mdb.models[modelname].materials['MATRIX'])
 
-    mdb.models[modelname].HomogeneousSolidSection(name='Matrix',
-                                                  material='MATRIX', thickness=None)
     mdb.models[modelname].HomogeneousSolidSection(name='Enrich',
                                                   material='ENRICH', thickness=None)
-    mdb.models[modelname].HomogeneousSolidSection(name='Void',
+    
+    if 'Material-1' in mdb.models[modelname].materials:
+        mdb.models[modelname].HomogeneousSolidSection(name='Void',
                                                   material='Material-1', thickness=None)
-    mdb.models[modelname].HomogeneousSolidSection(name='Embedded',
+    else:
+        mdb.models[modelname].Material(name='Material-1')
+        mdb.models[modelname].materials['Material-1'].Elastic(type=ISOTROPIC, table=((1.0e-10, 0.2), ))
+        mdb.models[modelname].HomogeneousSolidSection(name='Void',
+                                                  material='Material-1', thickness=None)
+    if 'EMBEDDED' in mdb.models[modelname].materials:
+        mdb.models[modelname].HomogeneousSolidSection(name='Embedded',
+                                                  material='EMBEDDED', thickness=None)
+    else:
+        mdb.models[modelname].Material(name='EMBEDDED')
+        mdb.models[modelname].materials['EMBEDDED'].Elastic(type=ISOTROPIC, table=((135, 0.3), ))
+        mdb.models[modelname].HomogeneousSolidSection(name='Embedded',
                                                   material='EMBEDDED', thickness=None)
 
     ###########################################
@@ -705,6 +744,12 @@ def main(filePath, modelname, iteration):
                         offsetType=MIDDLE_SURFACE, offsetField='',
                         thicknessAssignment=FROM_SECTION)
     p.SectionAssignment(region=rve, sectionName='Matrix', offset=0.0,
+                        offsetType=MIDDLE_SURFACE, offsetField='',
+                        thicknessAssignment=FROM_SECTION)
+    
+    for set in p.allSets.keys():
+        if set.startswith('INCLUSION'):
+            p.SectionAssignment(region=p.allSets[set], sectionName='Embedded', offset=0.0,
                         offsetType=MIDDLE_SURFACE, offsetField='',
                         thicknessAssignment=FROM_SECTION)
 
@@ -734,29 +779,34 @@ def main(filePath, modelname, iteration):
 
     r1 = a.referencePoints
     f1 = a.instances['RVEPLUS-1'].nodes
-    print(r1)
 
-    periodicBoundary.setRefpoint1(RP1=r1[5])
-    periodicBoundary.setRefpoint2(RP2=r1[6])
-    periodicBoundary.setRefpoint3(RP3=r1[7])
+    # Create and set reference points based on dimension
+    if dimension == 2:
+        periodicBoundary.setRefpoint1(RP1=r1[3])
+        periodicBoundary.setRefpoint2(RP2=r1[4])
+    else:  # 3D case
+        periodicBoundary.setRefpoint1(RP1=r1[5])
+        periodicBoundary.setRefpoint2(RP2=r1[6])
+        periodicBoundary.setRefpoint3(RP3=r1[7])
 
     # periodicity in X direction
     periodicBoundary.setGroup1(set1=a.allSets['NMINX'].nodes)
     periodicBoundary.setGroup2(set2=a.allSets['NMAXX'].nodes)
-
-    periodicBoundary.Periodic(is_smallstrain=False, dim=3, Vx=(long + 2 * ep), Vy=0, Vz=0)
-
-    # periodicity in Z direction
-    periodicBoundary.setGroup1(set1=a.allSets['NMINZ'].nodes)
-    periodicBoundary.setGroup2(set2=a.allSets['NMAXZ'].nodes)
-
-    periodicBoundary.Periodic(is_smallstrain=False, dim=3, Vx=0, Vy=0, Vz=(haut + 2 * ep))
-
+    periodicBoundary.Periodic(is_smallstrain=False, dim=dimension, 
+                            Vx=(long + 2 * ep), Vy=0, Vz=0)
     # periodicity in Y direction
     periodicBoundary.setGroup1(set1=a.allSets['NMINY'].nodes)
     periodicBoundary.setGroup2(set2=a.allSets['NMAXY'].nodes)
+    periodicBoundary.Periodic(is_smallstrain=False, dim=dimension, 
+                            Vx=0, Vy=(larg + 2 * ep), Vz=0)
 
-    periodicBoundary.Periodic(is_smallstrain=False, dim=3, Vx=0, Vy=(larg + 2 * ep), Vz=0)
+    if dimension == 3:
+        # periodicity in Z direction
+        periodicBoundary.setGroup1(set1=a.allSets['NMINZ'].nodes)
+        periodicBoundary.setGroup2(set2=a.allSets['NMAXZ'].nodes)
+        periodicBoundary.Periodic(is_smallstrain=False, dim=dimension,
+                                Vx=0, Vy=0, Vz=(haut + 2 * ep))
+
     ###########################################
 
     mdb.models[modelname].StaticStep(name='Step-1', previous='Initial')
@@ -772,110 +822,141 @@ def main(filePath, modelname, iteration):
     # p1 = mdb.models[modelname].parts['PART-1']
     #
     # mdb.models[modelname].parts.changeKey(fromName='PART-1', toName='Embedded')
-    p1 = mdb.models[modelname].parts['EMBEDDED']
+    if meshType == 4:
+        p1 = mdb.models[modelname].parts['EMBEDDED']
+        e1 = p1.elements
+        region = p1.Set(elements=(e1,), name='Set-2')
+        p1.SectionAssignment(region=region, sectionName='Embedded', offset=0.0,
+                             offsetType=MIDDLE_SURFACE, offsetField='',
+                             thicknessAssignment=FROM_SECTION)
 
-    e1 = p1.elements
-
-    region = p1.Set(elements=(e1,), name='Set-2')
-
-    p1.SectionAssignment(region=region, sectionName='Embedded', offset=0.0,
-                         offsetType=MIDDLE_SURFACE, offsetField='',
-                         thicknessAssignment=FROM_SECTION)
-
-    dat4 = p1.DatumCsysByThreePoints(name='csys-3', coordSysType=CARTESIAN, origin=(
-        0.0, 0.0, 0.0), line1=(0.0, 0.0, 1.0), line2=(0.0, 1.0, 0.0))
-    orientation = mdb.models[modelname].parts[p1.name].datums[dat4.id]
-    mdb.models[modelname].parts[p1.name].MaterialOrientation(region=region,
-                                                             orientationType=SYSTEM, axis=AXIS_1, localCsys=orientation,
-                                                             fieldName='', additionalRotationType=ROTATION_NONE,
-                                                             angle=0.0,
-                                                             additionalRotationField='', stackDirection=STACK_1)
-
-    a.Instance(name='EMBEDDED-1', part=p1, dependent=ON)
-
-    c1 = a.instances['EMBEDDED-1'].cells
-    a.Set(cells=c1, name='Set-cells-fiber')
-
-    region1 = a.sets['EMBEDDED-1.Set-2']
-    region2 = a.sets['RVEPLUS-1.Set-1']
-    mdb.models[modelname].EmbeddedRegion(name='Constraint-1',
-                                         embeddedRegion=region1, hostRegion=region2,
-                                         weightFactorTolerance=1e-06, absoluteTolerance=0.0,
-                                         fractionalTolerance=0.1, toleranceMethod=FRACTIONAL)
+        dat4 = p1.DatumCsysByThreePoints(name='csys-3', coordSysType=CARTESIAN, origin=(
+            0.0, 0.0, 0.0), line1=(0.0, 0.0, 1.0), line2=(0.0, 1.0, 0.0))
+        orientation = mdb.models[modelname].parts[p1.name].datums[dat4.id]
+        mdb.models[modelname].parts[p1.name].MaterialOrientation(region=region,
+                             orientationType=SYSTEM, axis=AXIS_1, localCsys=orientation,
+                             fieldName='', additionalRotationType=ROTATION_NONE,
+                             angle=0.0,
+                             additionalRotationField='', stackDirection=STACK_1)
+        a.Instance(name='EMBEDDED-1', part=p1, dependent=ON)
+        c1 = a.instances['EMBEDDED-1'].cells
+        a.Set(cells=c1, name='Set-cells-fiber')
+        region1 = a.sets['EMBEDDED-1.Set-2']
+        region2 = a.sets['RVEPLUS-1.Set-1']
+        mdb.models[modelname].EmbeddedRegion(name='Constraint-1',
+                                            embeddedRegion=region1, hostRegion=region2,
+                                            weightFactorTolerance=1e-06, absoluteTolerance=0.0,
+                                            fractionalTolerance=0.1, toleranceMethod=FRACTIONAL)
 
 
 
 
     ite_job = 1
-    idx = [0, 4, 8, 1, 2, 5]
+    if dimension == 2:
+        idx = [0, 3, 1]
+    else:
+        idx = [0, 4, 8, 1, 2, 5]
+
     for i in range(iteration):
-        C = []
-        CC = [[0, 0, 0, 0, 0, 0], [0, 0, 0, 0, 0, 0], [0, 0, 0, 0, 0, 0],
-              [0, 0, 0, 0, 0, 0], [0, 0, 0, 0, 0, 0], [0, 0, 0, 0, 0, 0]]
-        
+        C = []        
         if i > 0:
-            name = 'PBC-%s-%d.dat' % (name[0:-4], i)
+            name = 'PBC-%s-%d-%dD.dat' % (name[0:-4], i, dimension)
             f = open(name, 'r')
             data = f.read()
             splitdata = (data.split())
             floatdata = []
             for uniqueName in splitdata:
                 floatdata.append(float(uniqueName))
-            sd = np.reshape(floatdata, (6, 6))
-            f.close()
-            s11 = sd[0][0]
-            s12 = sd[0][1]
-            s22 = sd[1][1]
-            s13 = sd[0][2]
-            s23 = sd[1][2]
-            s33 = sd[2][2]
-            s14 = sd[0][3]
-            s24 = sd[1][3]
-            s34 = sd[2][3]
-            s44 = sd[3][3]
-            s15 = sd[0][4]
-            s25 = sd[1][4]
-            s35 = sd[2][4]
-            s45 = sd[3][4]
-            s55 = sd[4][4]
-            s16 = sd[0][5]
-            s26 = sd[1][5]
-            s36 = sd[2][5]
-            s46 = sd[3][5]
-            s56 = sd[4][5]
-            s66 = sd[5][5]
-            mdb.models[modelname].materials['enrich'].Elastic(type=ANISOTROPIC, table=((
-                                                                                           s11, s12, s22, s13, s23, s33,
-                                                                                           s14, s24, s34, s44, s15, s25,
-                                                                                           s35, s45, s55, s16, s26, s36,
-                                                                                           s46, s56, s66),))
+
+            if dimension == 3:
+                sd = np.reshape(floatdata, (6, 6))
+                s11 = sd[0][0]
+                s12 = sd[0][1]
+                s22 = sd[1][1]
+                s13 = sd[0][2]
+                s23 = sd[1][2]
+                s33 = sd[2][2]
+                s14 = sd[0][3]
+                s24 = sd[1][3]
+                s34 = sd[2][3]
+                s44 = sd[3][3]
+                s15 = sd[0][4]
+                s25 = sd[1][4]
+                s35 = sd[2][4]
+                s45 = sd[3][4]
+                s55 = sd[4][4]
+                s16 = sd[0][5]
+                s26 = sd[1][5]
+                s36 = sd[2][5]
+                s46 = sd[3][5]
+                s56 = sd[4][5]
+                s66 = sd[5][5]
+                f.close()
+            
+                mdb.models[modelname].materials['ENRICH'].Elastic(type=ANISOTROPIC, table=((
+                                                                 s11, s12, s22, s13, s23, s33,
+                                                                 s14, s24, s34, s44, s15, s25,
+                                                                 s35, s45, s55, s16, s26, s36,
+                                                                 s46, s56, s66),))
+            else:
+                sd = np.reshape(floatdata, (3, 3))
+                s11 = sd[0][0]
+                s12 = sd[0][1]
+                s22 = sd[1][1]
+                s13 = sd[0][2]
+                s23 = sd[1][2]
+                s33 = sd[2][2]
+                f.close()
+                E1 = s11 - ((s12 * s12) / s22);
+                E2 = s22 - ((s12 * s12) / s11);
+                E3 = (s11 * s22 - (s12 * s12)) / s22;
+                E4 = (s11 * s22 - (s12 * s12)) / s11;
+                Emed = (E1 + E2 + E3 + E4) / 4;
+
+                NU1 = s12 / s22;
+                NU2 = s12 / s11;
+                NU3 = ((s12 * s12) / (s11 * s22)) ** 0.5;
+                NUmed = (NU1 + NU2 + NU3) / 3.;
+                print(Emed, NUmed)
+
+
+                mdb.models[modelname].materials['ENRICH'].Elastic(type=ISOTROPIC, table=((Emed, NUmed),))
+            
 
         a = mdb.models[modelname].rootAssembly
 
         region1 = a.sets['REFMACRO1']
         region2 = a.sets['REFMACRO2']
-        region3 = a.sets['REFMACRO3']
+        if dimension == 3:
+            region3 = a.sets['REFMACRO3']
 
         job_namess = []
 
         for DefMat in homotot:
+            # First reference point BC
             mdb.models[modelname].DisplacementBC(name='BC-1', createStepName='Step-1',
-                                                 region=region1, u1=DefMat[0][0], u2=DefMat[0][
-                    1], u3=DefMat[0][2], ur1=UNSET, ur2=UNSET, ur3=UNSET,
-                                                 amplitude=UNSET, fixed=OFF, distributionType=UNIFORM, fieldName='',
-                                                 localCsys=None)
+                                               region=region1, u1=DefMat[0][0], u2=DefMat[0][1], 
+                                               u3=UNSET if dimension==2 else DefMat[0][2], 
+                                               ur1=UNSET, ur2=UNSET, ur3=UNSET,
+                                               amplitude=UNSET, fixed=OFF, distributionType=UNIFORM, 
+                                               fieldName='', localCsys=None)
 
+            # Second reference point BC
             mdb.models[modelname].DisplacementBC(name='BC-2', createStepName='Step-1',
-                                                 region=region2, u1=DefMat[1][0], u2=DefMat[1][
-                    1], u3=DefMat[1][2], ur1=UNSET, ur2=UNSET, ur3=UNSET,
-                                                 amplitude=UNSET, fixed=OFF, distributionType=UNIFORM, fieldName='',
-                                                 localCsys=None)
+                                               region=region2, u1=DefMat[1][0], u2=DefMat[1][1], 
+                                               u3=UNSET if dimension==2 else DefMat[1][2], 
+                                               ur1=UNSET, ur2=UNSET, ur3=UNSET,
+                                               amplitude=UNSET, fixed=OFF, distributionType=UNIFORM, 
+                                               fieldName='', localCsys=None)
 
-            mdb.models[modelname].DisplacementBC(name='BC-3', createStepName='Step-1',
-                                                 region=region3, u1=DefMat[2][0], u2=DefMat[2][
-                    1], u3=DefMat[2][2], ur1=UNSET, ur2=UNSET, ur3=UNSET,
-                                                 amplitude=UNSET, fixed=OFF, distributionType=UNIFORM, fieldName='',
-                                                 localCsys=None)
+            # Third reference point BC - only for 3D
+            if dimension == 3:
+                mdb.models[modelname].DisplacementBC(name='BC-3', createStepName='Step-1',
+                                                   region=region3, u1=DefMat[2][0], u2=DefMat[2][1], 
+                                                   u3=DefMat[2][2], ur1=UNSET, ur2=UNSET, ur3=UNSET,
+                                                   amplitude=UNSET, fixed=OFF, distributionType=UNIFORM, 
+                                                   fieldName='', localCsys=None)
+
             mdb.models[modelname].fieldOutputRequests['F-Output-1'].setValues(
                 variables=('S', 'U', 'RF', 'IVOL', 'EE', 'SENER'))
 
@@ -905,31 +986,38 @@ def main(filePath, modelname, iteration):
             jac = jacobien.getSubset(position=INTEGRATION_POINT, region=phase)
             det = jac.values
 
+            # Calculate volume
             b = 0
             for t in det:
                 b = b + t.data
-
-            print
-            'volume : ' + str(b)
 
             if (allFields.has_key('RF')):
                 ReactionForce = allFields['RF']
                 ite = 0
                 data = []
+                
+                # Adjust data collection based on dimension
+                if dimension == 2:
+                    max_ref_points = 2
+                    components_per_point = 3  # only x and y components
+                else:  # 3D case
+                    max_ref_points = 3
+                    components_per_point = 3  # x, y, and z components
+
                 for value in ReactionForce.values:
-                    if (value.nodeLabel < 4) and (ite < 3):
+                    if (value.nodeLabel <= max_ref_points) and (ite < components_per_point):
                         for val in value.data:
                             data.append(10 * val / b)
-                            # data = data + val
                         ite = ite + 1
+
             sorteddata = []
             for d in range(len(idx)):
-                sorteddata.append(data[idx[d]])
+                sorteddata.append(abs(data[idx[d]]))
             C.append(sorteddata)
-            print(C)
             odb.close()
 
-        f = open('PBC-%s-%d.dat' % (name[0:-4], i + 1), 'w')
+        # Write results to file
+        f = open('PBC-%s-%d-%dD.dat' % (name[0:-4], i + 1, dimension), 'w')
         for val in C:
             for subval in val:
                 f.write(str(subval) + ' ')

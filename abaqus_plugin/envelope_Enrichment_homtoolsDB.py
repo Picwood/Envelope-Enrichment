@@ -30,32 +30,52 @@ class Envelope_Enrichment_homtoolsDB(AFXDataDialog):
         okBtn.setText('Compute')
         
             
+        # Main vertical frame
+        mainFrame = FXVerticalFrame(self, LAYOUT_FILL_X|LAYOUT_FILL_Y)
+        
+        # File selection frame
+        fileFrame = FXHorizontalFrame(mainFrame, LAYOUT_FILL_X)
         fileHandler = Envelope_Enrichment_homtoolsDBFileHandler(form, 'filePath', 'All files (*)')
-        fileTextHf = FXHorizontalFrame(p=self, opts=0, x=0, y=0, w=0, h=0,
-            pl=0, pr=0, pt=0, pb=0, hs=DEFAULT_SPACING, vs=DEFAULT_SPACING)
-        # Note: Set the selector to indicate that this widget should not be
-        #       colored differently from its parent when the 'Color layout managers'
-        #       button is checked in the RSG Dialog Builder dialog.
-        fileTextHf.setSelector(99)
+        AFXTextField(p=fileFrame, ncols=12, labelText='File name:', 
+                    tgt=form.filePathKw, sel=0,
+                    opts=AFXTEXTFIELD_STRING|LAYOUT_CENTER_Y)
+        icon = afxGetIcon('fileOpen', AFX_ICON_SMALL)
+        FXButton(p=fileFrame, text='Select File\nFrom Dialog', ic=icon, 
+                tgt=fileHandler, sel=AFXMode.ID_ACTIVATE,
+                opts=BUTTON_NORMAL|LAYOUT_CENTER_Y)
+
+        # Model type group box
+        modelTypeBox = FXGroupBox(mainFrame, 'Model Configuration', 
+                                LAYOUT_FILL_X|FRAME_GROOVE)
         
-        
-        AFXTextField(p=fileTextHf, ncols=12, labelText='File name:', tgt=form.filePathKw, sel=0,
-            opts=AFXTEXTFIELD_STRING|LAYOUT_CENTER_Y)
-        icon = afxGetIcon('fileOpen', AFX_ICON_SMALL )
-        FXButton(p=fileTextHf, text='	Select File\nFrom Dialog', ic=icon, tgt=fileHandler, sel=AFXMode.ID_ACTIVATE,
-            opts=BUTTON_NORMAL|LAYOUT_CENTER_Y, x=0, y=0, w=0, h=0, pl=1, pr=1, pt=1, pb=1)
-        
-        import_handler = import_buttonHandler(form)
-        import_button = FXHorizontalFrame(p=self, opts=0, x=0, y=0, w=0, h=0,
-                                          pl=0, pr=0, pt=0, pb=0, hs=DEFAULT_SPACING, vs=DEFAULT_SPACING)
-        
-        FXButton(p=import_button, text='Import Model', tgt=import_handler, sel=AFXMode.ID_ACTIVATE,
-                 opts=BUTTON_NORMAL|LAYOUT_CENTER_Y, x=0, y=0, w=0, h=0, pl=1, pr=1, pt=1, pb=1)
-        
-        spinner = AFXSpinner(self, 6, 'Iteration', form.iterationKw, 0)
+        # Dimension radio buttons
+        dimFrame = FXHorizontalFrame(modelTypeBox)
+        FXLabel(dimFrame, 'Dimension:')
+        FXRadioButton(dimFrame, '2D', form.dimensionKw, 2,
+                     RADIOBUTTON_NORMAL|LAYOUT_CENTER_Y)
+        FXRadioButton(dimFrame, '3D', form.dimensionKw, 3,
+                     RADIOBUTTON_NORMAL|LAYOUT_CENTER_Y, True)
+
+        # Mesh type radio buttons in a group
+        dimFrame2 = FXHorizontalFrame(modelTypeBox)
+        FXLabel(dimFrame2, 'Mesh type:')
+        FXRadioButton(dimFrame2, 'Embedded', form.meshTypeKw, 4,
+                     RADIOBUTTON_NORMAL|LAYOUT_CENTER_Y)
+        FXRadioButton(dimFrame2, 'Conform', form.meshTypeKw, 5,
+                     RADIOBUTTON_NORMAL|LAYOUT_CENTER_Y)
+
+        # Iteration spinner
+        spinnerFrame = FXHorizontalFrame(mainFrame)
+        spinner = AFXSpinner(spinnerFrame, 6, 'Iteration:', 
+                           form.iterationKw, 0)
         spinner.setRange(2, 10)
         spinner.setIncrement(1)
-        
+
+        # Import button
+        import_handler = import_buttonHandler(form)
+        FXButton(mainFrame, 'Import Model', tgt=import_handler, 
+                sel=AFXMode.ID_ACTIVATE,
+                opts=BUTTON_NORMAL|LAYOUT_CENTER_X)
 
 ###########################################################################
 # Class definition
@@ -100,5 +120,3 @@ class import_buttonHandler(FXObject):
             name, ext = os.path.splitext(file)
             cmd = 'mdb.ModelFromInputFile(name=\'%s\', inputFileName=\'%s\')' % (name[0:-6], self.filePathKw.getValue())
             sendCommand(cmd)
-            
-            

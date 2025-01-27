@@ -24,6 +24,8 @@ class Envelope_Enrichment_homtools_plugin(AFXForm):
         self.filePathKw = AFXStringKeyword(self.cmd, 'filePath', True, '')
         self.modelnameKw = AFXStringKeyword(self.cmd, 'modelname', True)
         self.iterationKw = AFXIntKeyword(self.cmd, 'iteration', True, 4)
+        self.dimensionKw = AFXIntKeyword(self.cmd, 'dimension', True, 3)
+        self.meshTypeKw = AFXIntKeyword(self.cmd, 'meshType', True, 4)  # Default to Embedded
 
     #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     def getFirstDialog(self):

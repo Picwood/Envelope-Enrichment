@@ -217,7 +217,15 @@ def main_combine(file1,file2):
                 f.writelines(elem['element_type'])
             f.writelines(str(elem['element_id'])+ ', ' + ', '.join(map(str, elem['support_nodes'] ))+'\n')
         for nameSet in list(inp_data2.elemsets.keys()):
-            f.writelines('*Elset, elset=%s\n' %(nameSet))
+            # Convert old names to standardized names
+            if nameSet == 'VOLUME2' or nameSet == 'Volume2':
+                standardized_name = 'MATRIX'
+            elif nameSet == 'VOLUME3' or nameSet == 'Volume3':
+                standardized_name = 'ENVELOPE'
+            else:
+                standardized_name = nameSet
+                
+            f.writelines('*Elset, elset=%s\n' % (standardized_name))
             elem_from_set = list(inp_data2.elemsets[nameSet])
             for i in range(0, len(elem_from_set), 4):
                 row_elements = elem_from_set[i:i+4]
@@ -249,13 +257,26 @@ def main_combine(file1,file2):
         #f.writelines(str(min(elemVol1)) + ', ' + str(max(elemVol1)) + ', 1\n')
         
         #f.writelines('*Elset, elset=VOLUME2, instance=RVEplus-1\n')
-        elemVol2 = inp_data2.get_elem_from_set('Volume2')
-        #f.writelines(str(min(elemVol2)) + ', ' + str(max(elemVol2)) + ', 1\n')
-        #f.writelines('*Elset, elset=VOLUME3, instance=RVEplus-1\n')
-        elemVol3 = inp_data2.get_elem_from_set('Volume3')
-        #f.writelines(str(min(elemVol3)) + ', ' + str(max(elemVol3)) + ', 1\n')
-        f.writelines('*Elset, elset=Set-1, instance=RVEPLUS-1, generate\n')
-        f.writelines(str(min(elemVol2)) + ', ' + str(max(elemVol3)) + ', 1\n')
+        elemMatrix = inp_data2.get_elem_from_set('MATRIX') or inp_data2.get_elem_from_set('VOLUME2') or []
+        elemEnvelope = inp_data2.get_elem_from_set('ENVELOPE') or inp_data2.get_elem_from_set('VOLUME3') or []
+        
+        if elemMatrix or elemEnvelope:
+            f.writelines('*Elset, elset=Set-1, instance=RVEPLUS-1, generate\n')
+            min_elem = min(elemMatrix) if elemMatrix else min(elemEnvelope)
+            max_elem = max(elemEnvelope) if elemEnvelope else max(elemMatrix)
+            f.writelines(f"{min_elem}, {max_elem}, 1\n")
+        
+        if elemMatrix:
+            f.writelines('*Elset, elset=MATRIX, instance=RVEPLUS-1\n')
+            for i in range(0, len(elemMatrix), 4):
+                row_elements = elemMatrix[i:i+4]
+                f.writelines(', '.join(map(str, row_elements))+'\n')
+            
+        if elemEnvelope:
+            f.writelines('*Elset, elset=ENVELOPE, instance=RVEPLUS-1\n')
+            for i in range(0, len(elemEnvelope), 4):
+                row_elements = elemEnvelope[i:i+4]
+                f.writelines(', '.join(map(str, row_elements))+'\n')
         #f.writelines('** Constraint: Constraint-1\n*Embedded Element, host elset=RVEplus-1.Set-1, exterior tolerance=0.1\nEmbedded-1.Set-2\n')
         f.writelines('*End Assembly\n**\n')
         for line in material2:
