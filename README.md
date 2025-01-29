@@ -1,4 +1,5 @@
 # Homtools - Homogenization Tools for Abaqus
+# Homtools - Homogenization Tools for ...
 
 A Python-based toolset for automated homogenization analysis in Abaqus, featuring an iterative enrichment procedure.
 
@@ -131,4 +132,4 @@ Contributions are welcome! Please follow these steps:
 
 ## Contact
 
-[Insert Contact Information] 
+[Insert Contact Information]
